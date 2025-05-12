@@ -1,10 +1,10 @@
 {
   "name": "Geo Tag",
   "shortName": "geotag",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Infra",
   "hasAdminPanel": false,
-  "description": "Adiciona tags com base na geolocalizacao do IP do agente.",
+  "description": "Adiciona tags com base na geolocalizacao do IP do agente via console output.",
   "homepage": "https://github.com/lucasmega-lm/meshcentral-plugin-geotag/",
   "changelogUrl": "https://raw.githubusercontent.com/lucasmega-lm/meshcentral-plugin-geotag/master/changelog.md",
   "configUrl": "https://raw.githubusercontent.com/lucasmega-lm/meshcentral-plugin-geotag/master/config.json",

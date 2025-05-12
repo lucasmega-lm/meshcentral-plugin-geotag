@@ -1,93 +1,38 @@
-const http = require('http');
-
-function removeAccents(str) {
-    return str.normalize('NFD').replace(/[̀-ͯ]/g, '');
-}
-
 module.exports = function (parent) {
-    const ipCache = {};
-    const TTL_SECONDS = 1800;
+    console.log(">> Plugin geotag (console interceptor) carregado");
 
-    parent.AddAgentConnectionHandler(function (agent) {
+    parent.AddConsoleInterceptor(function (command, args, session, token, tag, output, response) {
         try {
-            const ip = agent.req?.connection?.remoteAddress?.replace(/^::ffff:/, '');
-            if (!ip || ip.startsWith("192.") || ip.startsWith("10.") || ip.startsWith("172.")) return;
+            const linhas = output.split(/\r?\n/);
+            const geo = {};
 
-            const now = Math.floor(Date.now() / 1000);
-            if (ipCache[ip] && (now - ipCache[ip].timestamp < TTL_SECONDS)) {
-                applyTags(parent, agent.dbid, ipCache[ip].geo);
-                return;
+            for (const linha of linhas) {
+                if (linha.startsWith("Pais:")) geo.pais = linha.split(":")[1].trim();
+                if (linha.startsWith("Estado:")) geo.estado = linha.split(":")[1].trim();
+                if (linha.startsWith("Cidade:")) geo.cidade = linha.split(":")[1].trim();
+                if (linha.startsWith("Provedor:")) geo.provedor = linha.split(":")[1].trim();
             }
 
-            function queryGeo(ip, attempt = 1) {
-                http.get(`http://ip-api.com/json/${ip}`, (res) => {
-                    let data = '';
-                    res.on('data', (chunk) => data += chunk);
-                    res.on('end', () => {
-                        try {
-                            const geo = JSON.parse(data);
-                            if (geo.status !== 'success') {
-                                if (attempt === 1) {
-                                    console.log(`[GeoTag] 1a tentativa falhou para ${ip}, tentando novamente...`);
-                                    return setTimeout(() => queryGeo(ip, 2), 3000);
-                                } else {
-                                    applyFallback();
-                                }
-                            } else {
-                                ipCache[ip] = { timestamp: now, geo };
-                                applyTags(parent, agent.dbid, geo);
-                            }
-                        } catch (e) {
-                            console.log("Erro ao processar resposta geo:", e.message);
-                            if (attempt === 1) {
-                                return setTimeout(() => queryGeo(ip, 2), 3000);
-                            } else {
-                                applyFallback();
-                            }
-                        }
+            if (geo.pais && geo.estado && geo.cidade && geo.provedor) {
+                console.log(`[GeoTag] Tags recebidas do agente ${session.nodeid}:`, geo);
+
+                const tags = [
+                    `Pais: ${geo.pais}`,
+                    `Estado: ${geo.estado}`,
+                    `Cidade: ${geo.cidade}`,
+                    `Provedor: ${geo.provedor}`
+                ];
+
+                for (const tag of tags) {
+                    parent.DispatchEvent([session.nodeid], {
+                        etype: 'tagchange',
+                        action: 'add',
+                        tag: tag
                     });
-                }).on('error', (err) => {
-                    console.log("Erro ao consultar geo API:", err.message);
-                    if (attempt === 1) {
-                        return setTimeout(() => queryGeo(ip, 2), 3000);
-                    } else {
-                        applyFallback();
-                    }
-                });
+                }
             }
-
-            function applyFallback() {
-                const geo = {
-                    country: "Desconhecido",
-                    region: "Desconhecido",
-                    city: "Desconhecido",
-                    isp: "Desconhecido"
-                };
-                ipCache[ip] = { timestamp: now, geo };
-                applyTags(parent, agent.dbid, geo);
-            }
-
-            queryGeo(ip);
-
         } catch (e) {
-            console.log("Erro plugin geo:", e.message);
+            console.log("[GeoTag] Erro ao processar tags recebidas:", e.message);
         }
     });
-
-    function applyTags(parent, nodeid, geo) {
-        const tags = [
-            `Pais: ${removeAccents(geo.country)}`,
-            `Estado: ${removeAccents(geo.region)}`,
-            `Cidade: ${removeAccents(geo.city)}`,
-            `Provedor: ${removeAccents(geo.isp)}`
-        ];
-
-        for (const tag of tags) {
-            parent.DispatchEvent([nodeid], {
-                etype: 'tagchange',
-                action: 'add',
-                tag: tag
-            });
-        }
-    }
 };
