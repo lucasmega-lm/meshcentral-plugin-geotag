@@ -1,0 +1,9 @@
+{
+  "name": "Geo Tag",
+  "shortName": "geotag",
+  "version": "1.0.0",
+  "author": "Infra",
+  "description": "Adiciona tags com base na geolocalizacao do IP do agente.",
+  "hasAdminPanel": false,
+  "meshCentralCompat": ">=0.9.29"
+}

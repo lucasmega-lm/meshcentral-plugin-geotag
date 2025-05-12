@@ -1,0 +1,7 @@
+{
+  "name": "geotag",
+  "version": "1.0.0",
+  "description": "Adiciona tags de localizacao e provedor com base no IP do agente.",
+  "author": "Infra",
+  "license": "MIT"
+}
